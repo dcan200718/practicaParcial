@@ -175,3 +175,80 @@ if __name__ == "__main__":
         print(f"  Nivel 3: {l3.name}")
     else:
         print(f"Nodo con ID {node_id} no encontrado")
+
+
+        ##
+
+def cargar_datos_csv(file_path):
+    """Carga el CSV DIVIPOLA y construye una multilist: Pais -> Departamento -> Municipio."""
+    datos = Doublelinkedlist()
+
+    # Creamos un nodo Pais único para Colombia
+    pais = Pais("CO", "COLOMBIA")
+    datos.append(pais)
+
+    with open(file_path, encoding="utf-8-sig", newline="") as file:
+        reader = csv.DictReader(file)
+
+        for row in reader:
+            # Campos según el CSV proporcionado
+            codigo_depto = row.get("Código Departamento", "").strip()
+            nombre_depto = row.get("Nombre Departamento", "").strip()
+            codigo_mun = row.get("Código Municipio", "").strip()
+            nombre_mun = row.get("Nombre Municipio", "").strip()
+
+            if codigo_depto == "" or codigo_mun == "":
+                continue
+
+            # Buscar departamento existente
+            dept = None
+            if pais.sub_list:
+                dept = pais.sub_list.search_by_attr("id", codigo_depto)
+
+            if dept is None:
+                dept = Departamento(codigo_depto, nombre_depto)
+                datos.add_child(pais, dept)
+
+            # Agregar municipio bajo el departamento
+            # Evitamos duplicados simples buscando por id en la sublista
+            exists = False
+            if dept.sub_list:
+                exists = dept.sub_list.search_by_attr("id", codigo_mun) is not None
+
+            if not exists:
+                mun = Municipio(codigo_mun, nombre_mun)
+                datos.add_child(dept, mun)
+
+    return datos
+
+
+def buscar_municipio_por_codigo(datos, codigo_mun):
+    """Busca un municipio por su código y devuelve (municipio, departamento, pais)"""
+    pais = datos.head
+    while pais:
+        if pais.sub_list:
+            dept = pais.sub_list.head
+            while dept:
+                if dept.sub_list:
+                    mun = dept.sub_list.search_by_attr("id", codigo_mun)
+                    if mun:
+                        return mun, dept, pais
+                dept = dept.next
+        pais = pais.next
+    return None, None, None
+
+
+if __name__ == "__main__":
+    datos = cargar_datos_csv("DIVIPOLA-_C_digos_municipios_20250505.csv")
+    print("=== Estructura cargada ===\n")
+    datos.print_multilist()
+
+    print("\n=== Búsqueda ejemplo ===\n")
+    codigo = "05001"  # ejemplo: Medellín
+    mun, dept, pais = buscar_municipio_por_codigo(datos, codigo)
+    if mun:
+        print(f"Municipio encontrado: {mun.name} (ID: {mun.id})")
+        print(f"  Departamento: {dept.name}")
+        print(f"  Pais: {pais.name}")
+    else:
+        print(f"Municipio con código {codigo} no encontrado")
